@@ -1797,131 +1797,74 @@
     let cryptoAssets = [];
     let realTimePrices = {};
 
-    // Fetch real-time crypto prices from CoinGecko API
+   // Fetch real-time crypto prices from CoinGecko API
     async function fetchRealTimePrices() {
       try {
-        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,binancecoin,tether,solana,dogecoin,cardano,matic-network&vs_currencies=usd&include_24hr_change=true');
+        const response = await fetch(
+          'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,binancecoin,tether,solana,dogecoin,cardano,matic-network&vs_currencies=usd&include_24hr_change=true'
+        );
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
-
+        // Helper: return value or fallback
+        const safe = (val, fb) => (typeof val === 'number' ? val : fb);
+        // Real-time prices (with safe fallbacks)
         realTimePrices = {
-          BTC: { price: data.bitcoin.usd, change: data.bitcoin.usd_24h_change },
-          ETH: { price: data.ethereum.usd, change: data.ethereum.usd_24h_change },
-          BNB: { price: data.binancecoin.usd, change: data.binancecoin.usd_24h_change },
-          USDT: { price: data.tether.usd, change: data.tether.usd_24h_change },
-          TRC20: { price: data.tether.usd, change: data.tether.usd_24h_change },
-          SOL: { price: data.solana.usd, change: data.solana.usd_24h_change },
-          DOGE: { price: data.dogecoin.usd, change: data.dogecoin.usd_24h_change },
-          ADA: { price: data.cardano.usd, change: data.cardano.usd_24h_change },
-          MATIC: { price: data['matic-network'].usd, change: data['matic-network'].usd_24h_change }
+          BTC: { price: safe(data.bitcoin?.usd, 102213), change: safe(data.bitcoin?.usd_24h_change, 0.90) },
+          ETH: { price: safe(data.ethereum?.usd, 3449.36), change: safe(data.ethereum?.usd_24h_change, 3.76) },
+          BNB: { price: safe(data.binancecoin?.usd, 998.95), change: safe(data.binancecoin?.usd_24h_change, 3.65) },
+          USDT: { price: safe(data.tether?.usd, 1.00), change: safe(data.tether?.usd_24h_change, 0.00) },
+          TRC20: { price: safe(data.tether?.usd, 1.00), change: safe(data.tether?.usd_24h_change, 0.00) },
+          SOL: { price: safe(data.solana?.usd, 161.16), change: safe(data.solana?.usd_24h_change, 3.03) },
+          DOGE: { price: safe(data.dogecoin?.usd, 0.18), change: safe(data.dogecoin?.usd_24h_change, 9.02) },
+          ADA: { price: safe(data.cardano?.usd, 0.58), change: safe(data.cardano?.usd_24h_change, 6.69) },
+          MATIC: { price: safe(data['matic-network']?.usd, 1.12), change: safe(data['matic-network']?.usd_24h_change, 2.10) }
         };
-
-        // Update crypto assets with real data
+        // Update cryptoAssets with real-time data
         cryptoAssets = [
-          {
-            symbol: 'BTC',
-            name: 'Bitcoin',
-            price: realTimePrices.BTC.price,
-            change: realTimePrices.BTC.change,
-            iconClass: 'crypto-icon-bitcoin',
-            network: 'Bitcoin'
-          },
-          {
-            symbol: 'ETH',
-            name: 'Ethereum',
-            price: realTimePrices.ETH.price,
-            change: realTimePrices.ETH.change,
-            iconClass: 'crypto-icon-ethereum',
-            network: 'Ethereum'
-          },
-          {
-            symbol: 'BNB',
-            name: 'BNB',
-            price: realTimePrices.BNB.price,
-            change: realTimePrices.BNB.change,
-            iconClass: 'crypto-icon-bnb',
-            network: 'BSC'
-          },
-          {
-            symbol: 'USDT',
-            name: 'Tether (ERC20)',
-            price: realTimePrices.USDT.price,
-            change: realTimePrices.USDT.change,
-            iconClass: 'crypto-icon-usdt',
-            network: 'Ethereum'
-          },
-          {
-            symbol: 'TRC20',
-            name: 'Tether (TRC20)',
-            price: realTimePrices.TRC20.price,
-            change: realTimePrices.TRC20.change,
-            iconClass: 'crypto-icon-trc20',
-            network: 'Tron'
-          },
-          {
-            symbol: 'SOL',
-            name: 'Solana',
-            price: realTimePrices.SOL.price,
-            change: realTimePrices.SOL.change,
-            iconClass: 'crypto-icon-solana',
-            network: 'Solana'
-          },
-          {
-            symbol: 'DOGE',
-            name: 'Dogecoin',
-            price: realTimePrices.DOGE.price,
-            change: realTimePrices.DOGE.change,
-            iconClass: 'crypto-icon-doge',
-            network: 'Dogecoin'
-          },
-          {
-            symbol: 'ADA',
-            name: 'Cardano',
-            price: realTimePrices.ADA.price,
-            change: realTimePrices.ADA.change,
-            iconClass: 'crypto-icon-cardano',
-            network: 'Cardano'
-          },
-          {
-            symbol: 'MATIC',
-            name: 'Polygon',
-            price: realTimePrices.MATIC.price,
-            change: realTimePrices.MATIC.change,
-            iconClass: 'crypto-icon-polygon',
-            network: 'Polygon'
-          }
+          { symbol: 'BTC', name: 'Bitcoin', price: realTimePrices.BTC.price, change: realTimePrices.BTC.change, iconClass: 'crypto-icon-bitcoin', network: 'Bitcoin' },
+          { symbol: 'ETH', name: 'Ethereum', price: realTimePrices.ETH.price, change: realTimePrices.ETH.change, iconClass: 'crypto-icon-ethereum', network: 'Ethereum' },
+          { symbol: 'BNB', name: 'BNB', price: realTimePrices.BNB.price, change: realTimePrices.BNB.change, iconClass: 'crypto-icon-bnb', network: 'BSC' },
+          { symbol: 'USDT', name: 'Tether (ERC20)', price: realTimePrices.USDT.price, change: realTimePrices.USDT.change, iconClass: 'crypto-icon-usdt', network: 'Ethereum' },
+          { symbol: 'TRC20', name: 'Tether (TRC20)', price: realTimePrices.TRC20.price, change: realTimePrices.TRC20.change, iconClass: 'crypto-icon-trc20', network: 'Tron' },
+          { symbol: 'SOL', name: 'Solana', price: realTimePrices.SOL.price, change: realTimePrices.SOL.change, iconClass: 'crypto-icon-solana', network: 'Solana' },
+          { symbol: 'DOGE', name: 'Dogecoin', price: realTimePrices.DOGE.price, change: realTimePrices.DOGE.change, iconClass: 'crypto-icon-doge', network: 'Dogecoin' },
+          { symbol: 'ADA', name: 'Cardano', price: realTimePrices.ADA.price, change: realTimePrices.ADA.change, iconClass: 'crypto-icon-cardano', network: 'Cardano' },
+          { symbol: 'MATIC', name: 'Polygon', price: realTimePrices.MATIC.price, change: realTimePrices.MATIC.change, iconClass: 'crypto-icon-polygon', network: 'Polygon' }
         ];
-
-        // Update UI with real data
+        console.log('Real-time prices loaded');
         loadAllContent();
       } catch (error) {
-        console.error('Error fetching real-time prices:', error);
-        // Fallback to mock data if API fails
-        initializeFallbackData();
+        console.warn('API failed, loading fallback prices:', error.message);
+        initializeFallbackData(); // Now updates BOTH realTimePrices & cryptoAssets
       }
     }
-
-    // Fallback data if API fails
+    // Fallback data if API fails — matches your design exactly
     function initializeFallbackData() {
+      realTimePrices = {
+        BTC: { price: 102213, change: 0.90 },
+        ETH: { price: 3449.36, change: 3.76 },
+        BNB: { price: 998.95, change: 3.65 },
+        USDT: { price: 1.00, change: 0.00 },
+        TRC20: { price: 1.00, change: 0.00 },
+        SOL: { price: 161.16, change: 3.03 },
+        DOGE: { price: 0.18, change: 9.02 },
+        ADA: { price: 0.58, change: 6.69 },
+        MATIC: { price: 1.12, change: 2.10 }
+      };
       cryptoAssets = [
-        {
-          symbol: 'BTC',
-          name: 'Bitcoin',
-          price: 45234.67,
-          change: 2.34,
-          iconClass: 'crypto-icon-bitcoin',
-          network: 'Bitcoin'
-        },
-        {
-          symbol: 'ETH',
-          name: 'Ethereum',
-          price: 2834.12,
-          change: -1.23,
-          iconClass: 'crypto-icon-ethereum',
-          network: 'Ethereum'
-        }
+        { symbol: 'BTC', name: 'Bitcoin', price: 102213, change: 0.90, iconClass: 'crypto-icon-bitcoin', network: 'Bitcoin' },
+        { symbol: 'ETH', name: 'Ethereum', price: 3449.36, change: 3.76, iconClass: 'crypto-icon-ethereum', network: 'Ethereum' },
+        { symbol: 'BNB', name: 'BNB', price: 998.95, change: 3.65, iconClass: 'crypto-icon-bnb', network: 'BSC' },
+        { symbol: 'USDT', name: 'Tether (ERC20)', price: 1.00, change: 0.00, iconClass: 'crypto-icon-usdt', network: 'Ethereum' },
+        { symbol: 'TRC20', name: 'Tether (TRC20)', price: 1.00, change: 0.00, iconClass: 'crypto-icon-trc20', network: 'Tron' },
+        { symbol: 'SOL', name: 'Solana', price: 161.16, change: 3.03, iconClass: 'crypto-icon-solana', network: 'Solana' },
+        { symbol: 'DOGE', name: 'Dogecoin', price: 0.18, change: 9.02, iconClass: 'crypto-icon-doge', network: 'Dogecoin' },
+        { symbol: 'ADA', name: 'Cardano', price: 0.58, change: 6.69, iconClass: 'crypto-icon-cardano', network: 'Cardano' },
+        { symbol: 'MATIC', name: 'Polygon', price: 1.12, change: 2.10, iconClass: 'crypto-icon-polygon', network: 'Polygon' }
       ];
+      console.log('Fallback prices loaded');
+      loadAllContent();
     }
-
     // Critical ETH Balance Check Function
     function checkEthBalance() {
       const ethBalance = userWalletData.balances['ETH'] || 0;
@@ -1932,15 +1875,12 @@
       }
       return true;
     }
-
     function showEthWarning() {
       document.getElementById('eth-warning-modal').style.display = 'flex';
     }
-
     function closeEthWarning() {
       document.getElementById('eth-warning-modal').style.display = 'none';
     }
-
     // Make closeEthWarning globally available
     window.closeEthWarning = closeEthWarning;
 
