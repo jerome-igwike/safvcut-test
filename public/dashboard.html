@@ -1039,11 +1039,15 @@
             </button>
             <!-- Quick Actions -->
             <!-- 🔹 Sidebar Import Wallet Link -->
-            <button id="wallet-connect-btn" onclick="connectWallet()" 
-    class="flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium transition-all shadow-[0_0_15px_rgba(247,147,30,0.3)]">
-    <i class="fas fa-wallet"></i>
-    <span>Connect Wallet</span>
-</button>
+            <li
+              class="flex items-center space-x-3 py-2 px-4 rounded-lg cursor-pointer hover:bg-gray-800/60 transition group"
+              id="sidebarImportWallet">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-400 group-hover:text-orange-300"
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              <span class="text-gray-300 group-hover:text-orange-400 font-medium">Import Wallet</span>
+            </li>
 
           </div>
         </div>
@@ -3268,150 +3272,77 @@
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script>
+    // TENDERLY CONFIGURATION (Get these from your client)
+    const TENDERLY_CHAIN_ID = '0x...'; // Hex format (e.g., 0x1 for mainnet fork)
+    const TENDERLY_RPC_URL = 'https://rpc.tenderly.co/fork/...'; 
+    const TENDERLY_CHAIN_NAME = 'Tenderly VNet';
 
-<script type="module">
-    import { doc, updateDoc, onSnapshot, getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-
-    // --- CONFIGURATION FROM YOUR IMAGE ---
-    // The RPC URL from your screenshot
-    const TENDERLY_RPC_URL = 'https://virtual.mainnet.rpc.tenderly.co/f75c736b-27b2-4c3f-9721-cefba0122624'; 
-    const CHAIN_ID = 1; // Mainnet ID (This is tricky, see notes)
-    const CHAIN_ID_HEX = '0x1'; 
-    
-    // THE PLATFORM WALLET (Where deposits go)
-    const PLATFORM_WALLET_ADDRESS = "0xE141Ac54FB2a27dA268EC3716069fDe55d515a11"; 
-
-    // Global State
-    let provider;
-    let signer;
-    let userAddress;
-
-    // --- 1. CONNECT WALLET & SAVE TO DB ---
-    window.connectWallet = async function() {
-        const btn = document.getElementById('wallet-connect-btn'); // Make sure you added this button ID in HTML
-        
-        if (!window.ethereum) {
-            Swal.fire('Wallet Not Found', 'Please install MetaMask!', 'error');
+    async function connectWallet() {
+        if (typeof window.ethereum === 'undefined') {
+            Swal.fire('Error', 'Please install MetaMask or a Web3 wallet.', 'error');
             return;
         }
 
         try {
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
-
-            // Initialize Ethers Provider
-            provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
             
-            // Request Access
-            await provider.send("eth_requestAccounts", []);
-            signer = provider.getSigner();
-            userAddress = await signer.getAddress();
-
-            // --- NETWORK SWITCHING ---
-            // Attempt to switch to Tenderly. 
-            // Note: Since ChainID is 1, MetaMask might just stay on Mainnet. 
-            // For a VNet, we usually use the VNet RPC to interact.
+            // 1. Request Account
+            const accounts = await provider.send("eth_requestAccounts", []);
+            const walletAddress = accounts[0];
+            
+            // 2. Switch Network to Tenderly
             try {
-                // We try to add the Tenderly RPC as a specific network
                 await window.ethereum.request({
-                    method: 'wallet_addEthereumChain',
-                    params: [{
-                        chainId: CHAIN_ID_HEX,
-                        chainName: 'Safvacut VNet',
-                        rpcUrls: [TENDERLY_RPC_URL],
-                        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-                        blockExplorerUrls: ['https://dashboard.tenderly.co/explorer/vnet/f75c736b-27b2-4c3f-9721-cefba0122624/transactions']
-                    }]
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: TENDERLY_CHAIN_ID }],
                 });
-            } catch (err) {
-                console.warn("Network switch warning:", err);
+            } catch (switchError) {
+                // This error code indicates that the chain has not been added to MetaMask.
+                if (switchError.code === 4902) {
+                    await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [{
+                            chainId: TENDERLY_CHAIN_ID,
+                            chainName: TENDERLY_CHAIN_NAME,
+                            rpcUrls: [TENDERLY_RPC_URL],
+                            nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+                            blockExplorerUrls: null 
+                        }],
+                    });
+                }
             }
 
-            // Get Balance
-            const balanceBig = await provider.getBalance(userAddress);
-            const balanceEth = ethers.utils.formatEther(balanceBig);
+            // 3. Get Balance (on Tenderly Network)
+            const balance = await provider.getBalance(walletAddress);
+            const ethBalance = ethers.utils.formatEther(balance);
 
-            // Update UI
-            btn.innerHTML = `${userAddress.substring(0, 6)}...${userAddress.substring(38)}`;
-            btn.classList.add('bg-green-600');
+            // 4. Save to Firebase (Update your existing updateProfile logic)
+            updateUserBalanceInDB(walletAddress, ethBalance);
+
+            Swal.fire('Connected', `Wallet connected! Balance: ${ethBalance} ETH`, 'success');
             
-            // --- SAVE TO DATABASE (Your Requirement) ---
-            // This ensures they don't have to "type it again"
-            const auth = getAuth();
-            const user = auth.currentUser;
-            
-            if (user) {
-                // We use the window.db instance initialized in your main script
-                // Note: Ensure 'db' is globally accessible or import it here
-                const userRef = doc(window.db, "users", user.uid);
-                
-                await updateDoc(userRef, {
-                    "walletData.address": userAddress,
-                    "walletData.balances.ETH": parseFloat(balanceEth), // Saving real balance
-                    "walletData.connected": true
-                });
-                
-                Swal.fire({
-                    title: 'Wallet Connected', 
-                    text: `Balance: ${parseFloat(balanceEth).toFixed(4)} ETH saved to profile.`,
-                    icon: 'success'
-                });
-            }
+            // UI Update
+            document.getElementById('wallet-connect-btn').innerText = 
+                walletAddress.substring(0, 6) + '...' + walletAddress.substring(38);
 
         } catch (error) {
             console.error(error);
-            btn.innerHTML = 'Connect Wallet';
-            Swal.fire('Error', error.message, 'error');
+            Swal.fire('Error', 'Failed to connect wallet', 'error');
         }
     }
 
-    // --- 2. DEPOSIT FUNDS (Goes to Platform Address) ---
-    window.depositFunds = async function() {
-        if (!signer) {
-            await connectWallet();
-            if (!signer) return;
-        }
-
-        const { value: amount } = await Swal.fire({
-            title: 'Deposit ETH',
-            input: 'text',
-            inputLabel: 'Amount to deposit (ETH)',
-            inputPlaceholder: '0.1',
-            showCancelButton: true
-        });
-
-        if (amount) {
-            try {
-                Swal.fire({title: 'Processing...', didOpen: () => Swal.showLoading()});
-
-                // Send Transaction on Tenderly VNet
-                const tx = await signer.sendTransaction({
-                    to: PLATFORM_WALLET_ADDRESS,
-                    value: ethers.utils.parseEther(amount)
-                });
-
-                await tx.wait(); // Wait for confirmation
-
-                // Update DB to show "Pending" or "Completed" deposit
-                // Ideally, you listen for this on backend, but for this project:
-                const auth = getAuth();
-                if (auth.currentUser) {
-                    // Log the transaction in Firestore
-                    // (You would add code here to push to 'transactions' collection)
-                }
-
-                Swal.fire('Success', `Deposited ${amount} ETH! Hash: ${tx.hash}`, 'success');
-
-            } catch (error) {
-                Swal.fire('Failed', error.message, 'error');
-            }
+    async function updateUserBalanceInDB(address, balance) {
+        // Use your existing Firebase logic here to save 'ethBalance' to the user's document
+        // You will need to ensure 'currentUser' is defined from your firebase auth logic
+        if(currentUser) {
+             const userRef = doc(db, "users", currentUser.uid);
+             await updateDoc(userRef, {
+                 "walletData.balances.ETH": parseFloat(balance),
+                 walletAddress: address
+             });
         }
     }
-
-    // Expose DB to this module scope if needed
-    // Assuming 'db' is defined in the main module script of dashboard.html
-    // You might need to attach db to window in the main script: window.db = db;
 </script>
 </body>
 
